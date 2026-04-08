@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific outputs and artifacts
+itroberta_output_files/
+test_csvs
+roberta.py
+

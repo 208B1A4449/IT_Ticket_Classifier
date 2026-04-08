@@ -1,0 +1,115 @@
+# =========================================================
+# Two-Stage RoBERTa Ticket Classification Configuration
+# =========================================================
+# This configuration controls the full ML pipeline:
+# Stage 1 → Domain adaptation (learn IT language)
+# Stage 2 → Classification (predict ticket category)
+# =========================================================
+
+# =========================================================
+# 1. DATA CONFIGURATION (Inputs)
+# =========================================================
+data:
+  # The final labeled training dataset used in Stage 2
+  labeled_csv: "cleaned_service_desk_balanced_final.csv"
+  
+  # The temporary output path for the combined unlabeled descriptions
+  unlabeled_csv: "only_descriptions.csv"
+
+  # Source files merged into the unlabeled dataset for Stage 1
+  source_files:
+    - "all_tickets_processed_improved_v3.csv"
+    - "cleaned_service_desk_balanced_final.csv"
+    - "service_desk_strong_classification_data.csv"
+    - "generateditsm/generateditsm20k_data.csv"
+
+# =========================================================
+# 2. PATH CONFIGURATION (Outputs)
+# =========================================================
+paths:
+  # Base directory for all generated artifacts
+  base_dir: "itroberta_output_files"
+  
+  # Directory to save Stage 1 model (inside base_dir)
+  stage1_dir: "roberta_it_stage1"
+  
+  # Directory to save Stage 2 classifier (inside base_dir)
+  model_dir: "roberta_it_ticket_classifier"
+  
+  # Directory to save evaluation outputs (inside base_dir)
+  output_dir: "roberta_stage2_output"
+
+# =========================================================
+# 3. STAGE 1: DOMAIN-ADAPTIVE PRETRAINING (MLM)
+# =========================================================
+stage1:
+
+  # Base pretrained model from HuggingFace
+  # This is the starting point before domain adaptation
+  base_model: "roberta-base"
+
+  # Column name in CSV that contains ticket text
+  text_col: "ticket_description"
+
+  # Maximum number of tokens per input sequence
+  # Longer text will be truncated, shorter padded
+  max_length: 128
+
+  # Number of samples processed per training step
+  batch_size: 16
+
+  # Total passes over the dataset
+  # Keep small (2–5) since this is pretraining
+  epochs: 3
+
+  # Learning rate for optimizer (AdamW)
+  # Slightly higher for MLM training
+  lr: 5e-5
+
+  # Regularization to prevent overfitting
+  weight_decay: 0.01
+
+  # Percentage of tokens randomly masked for MLM task
+  # Model learns to predict these masked words
+  mlm_probability: 0.15   # 15%
+
+  # Portion of data used for validation during Stage 1
+  val_split: 0.05         # 5% validation
+
+
+# =========================================================
+# 4. STAGE 2: SUPERVISED CLASSIFICATION
+# =========================================================
+stage2:
+
+  # Column containing input text
+  text_col: "ticket_description"
+
+  # Column containing target labels (categories)
+  label_col: "ticket_category"
+
+  # Same token length as Stage 1 (must match)
+  max_length: 128
+
+  # Batch size for classification training
+  batch_size: 16
+
+  # Number of training epochs
+  # Higher than Stage 1 since this is final task
+  epochs: 10
+
+  # Lower learning rate for fine-tuning
+  # Prevents destroying pretrained knowledge
+  lr: 2e-5
+
+  # Regularization to reduce overfitting
+  weight_decay: 0.01
+
+  # Smooths labels to improve generalization
+  # Prevents model from becoming overconfident
+  label_smoothing: 0.10
+
+  # Early stopping patience
+  # Training stops if validation loss doesn't improve
+  # for these many consecutive epochs
+  patience: 3
